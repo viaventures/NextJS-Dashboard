@@ -138,3 +138,41 @@ const FormSchema = z.object({
       throw error;
     }
   }
+
+  export async function register(prevState: State, formData: FormData) {
+    // Validate form fields using Zod
+    const validatedFields = CreateInvoice.safeParse({
+      email: formData.get('customerId'),
+      password: formData.get('amount'),
+    });
+  
+    // If form validation fails, return errors early. Otherwise, continue.
+    if (!validatedFields.success) {
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: 'Missing Fields. Failed to register.',
+      };
+    }
+  
+    // Prepare data for insertion into the database
+    const { name, email, password } = validatedFields.data;
+    // const amountInCents = amount * 100;
+    // const date = new Date().toISOString().split('T')[0];
+  
+    // Insert data into the database
+    try {
+      await sql`
+        INSERT INTO invoices (cname, email, password)
+        VALUES (${name}, ${email}, ${password})
+      `;
+    } catch (error) {
+      // If a database error occurs, return a more specific error.
+      return {
+        message: 'Database Error: Failed to Create Invoice.',
+      };
+    }
+  
+    // Revalidate the cache for the invoices page and redirect the user.
+    revalidatePath('/dashboard/invoices');
+    redirect('/dashboard/invoices');
+  }
